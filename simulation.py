@@ -35,7 +35,10 @@ def approximate_value_iteration(env,
         state = env.reset()  # random
         States.append(state)
     States = np.array(States, dtype=np.float32)
+    StatesNext = States
+    StatesPrev = States
     
+
     for i in range(num_iterations):
         X = []
         y = []
@@ -49,24 +52,20 @@ def approximate_value_iteration(env,
                 if i != 0: 
                     val_next = 0.0 if done else np.dot(w, env.feature_func(state_next,state))
                 else:
-                    val_next = 0.0 if done else env.S_function(state)
+                    val_next = 0.0 if done else env.S_function(state_next)
                     
                 q_val = reward + gamma * val_next
                 if q_val > best_val:
                     best_val = q_val
                     
-                    if i == 0:
-                        prevStates = States
-                        
-                    tempStates = States
-                    States[j] = state_next
+                    StatesNext[j] = state_next
                     
-            X.append(env.feature_func(state,prevStates[j]))
+            X.append(env.feature_func(state,StatesPrev[j]))
             y.append(best_val)
             
-            if i != 0:
-                prevStates = tempStates
-                        
+        StatesPrev = States        # t                   
+        States     = StatesNext    # t+1
+
         X = np.array(X)
         y = np.array(y)
         

@@ -77,10 +77,10 @@ class AirCombatEnv:
         yR = sample_with_defaults(yR, 'normal', 0.0, 7.0)
         
         # Headings, bank ~ uniform
-        headingB = sample_with_defaults(headingB, 'uniform', -np.pi, np.pi)
-        bankB    = sample_with_defaults(bankB, 'uniform', -np.pi, np.pi)
-        headingR = sample_with_defaults(headingR, 'uniform', -np.pi, np.pi)
-        bankR    = sample_with_defaults(bankR, 'uniform', -np.pi, np.pi)
+        headingB = sample_with_defaults(headingB, 'uniform', -np.pi             , np.pi)
+        bankB    = sample_with_defaults(bankB,    'uniform', -self.max_bank_blue, self.max_bank_blue)
+        headingR = sample_with_defaults(headingR, 'uniform', -np.pi             , np.pi)
+        bankR    = sample_with_defaults(bankR,    'uniform', -self.max_bank_red , self.max_bank_red)
         
         # # Clip positions to stay within boundaries (or re-sample if you prefer)
         # xB = np.clip(xB, -self.boundary, self.boundary)
@@ -219,7 +219,7 @@ class AirCombatEnv:
         For demonstration, let's do a naive check—replace with real geometry if needed.
         """
         # Just pretend "goal zone" means distance < some threshold & some angle constraints
-        xB, yB, hB, bB, xR, yR, hR, bR = state
+        #xB, yB, hB, bB, xR, yR, hR, bR = state
  
         R   = self.R_find(state)
         AA  = self.AA_find(state,0)
@@ -238,14 +238,6 @@ class AirCombatEnv:
         
         But we only need the *first* Red action from the best sequence.
         """
-        # We'll do a coarse approach: 
-        # 1. For each red_action in {0,1,2}, do 1-step rollout 
-        #    => get intermediate state -> approximate the final S
-        # 2. Return the red_action that yields the largest S after that 1 step 
-        #    (instead of full 3-step tree).
-        #
-        # If you want the full 3-step tree, you'd do a nested loop or recursion. 
-        # That’s more code, so let's do a single-step look-ahead for demonstration.
         
         state_org = state
         red_best_action = 0
@@ -273,24 +265,24 @@ class AirCombatEnv:
         
         if relFlag == 0:   # rel to blue
             
-            LOS_vec = np.array([xR - xB , yR - yB]) + 0.0000001
-            magnitude = np.linalg.norm(LOS_vec) 
+            LOS_vec = np.array([xR - xB , yR - yB]) 
+            magnitude = np.linalg.norm(LOS_vec) + 0.0000001
             LOS_vec = LOS_vec/magnitude
             
             Vel_vec = np.array([np.cos(hB), np.sin(hB)])
             
-            ATA = np.arccos(np.dot(LOS_vec,Vel_vec))
-            return min(max(np.degrees(ATA),-180),180)
+            ATA = np.arccos(min(max(np.dot(LOS_vec,Vel_vec),-1),1))
+            return np.degrees(ATA)
         
         else:              # rel to red
-            LOS_vec = np.array([xB - xR , yB - yR]) + 0.0000001
-            magnitude = np.linalg.norm(LOS_vec) 
+            LOS_vec = np.array([xB - xR , yB - yR]) 
+            magnitude = np.linalg.norm(LOS_vec) + 0.0000001
             LOS_vec = LOS_vec/magnitude
             
             Vel_vec = np.array([np.cos(hR), np.sin(hR)])
             
-            ATA = np.arccos(np.dot(LOS_vec,Vel_vec))
-            return min(max(np.degrees(ATA),-180),180)
+            ATA = np.arccos(min(max(np.dot(LOS_vec,Vel_vec),-1),1))
+            return np.degrees(ATA)
 
     def AA_find(self,state,relFlag = 0):
         
@@ -298,34 +290,34 @@ class AirCombatEnv:
         
         if relFlag == 0:   # rel to blue
             
-            inv_LOS_vec = np.array([xB - xR , yB - yR]) + 0.0000001
-            magnitude = np.linalg.norm(inv_LOS_vec)
+            inv_LOS_vec = np.array([xB - xR , yB - yR]) 
+            magnitude = np.linalg.norm(inv_LOS_vec) + 0.0000001
             inv_LOS_vec = inv_LOS_vec/magnitude
             
             inv_red_Vel_vec = -np.array([np.cos(hR), np.sin(hR)])
             
-            AA = np.arccos(np.dot(inv_LOS_vec,inv_red_Vel_vec))
-            return min(max(np.degrees(AA),-180),180)
+            AA = np.arccos(min(max(np.dot(inv_LOS_vec,inv_red_Vel_vec),-1),1))
+            return np.degrees(AA)
         
         else:              # rel to red
-            inv_LOS_vec = np.array([xR - xB , yR - yB]) + 0.0000001
-            magnitude = np.linalg.norm(inv_LOS_vec) 
+            inv_LOS_vec = np.array([xR - xB , yR - yB]) 
+            magnitude = np.linalg.norm(inv_LOS_vec)  + 0.0000001
             inv_LOS_vec = inv_LOS_vec/magnitude
             
-            inv_blue_Vel_vec = -np.array([np.cos(hB), np.sin(hB)])
+            inv_blue_Vel_vec = -np.array([np.cos(hB), np.sin(hB)]) 
             
-            AA = np.arccos(np.dot(inv_LOS_vec,inv_blue_Vel_vec))
-            return min(max(np.degrees(AA),-180),180)
+            AA = np.arccos(min(max(np.dot(inv_LOS_vec,inv_blue_Vel_vec),-1),1))
+            return np.degrees(AA)
         
     def HCA_find(self,state):
         
         xB, yB, hB, bB, xR, yR, hR, bR = state
         
-        blue_Vel_vec = np.array([np.cos(hB), np.sin(hB)])
-        red_Vel_vec  = np.array([np.cos(hR), np.sin(hR)])
+        blue_Vel_vec = np.array([np.cos(hB), np.sin(hB)]) 
+        red_Vel_vec  = np.array([np.cos(hR), np.sin(hR)]) 
         
-        HCA = np.arccos(np.dot(blue_Vel_vec,red_Vel_vec))
-        return min(max(np.degrees(HCA),-180),180)
+        HCA = np.arccos(min(max(np.dot(blue_Vel_vec,red_Vel_vec),-1),1))
+        return np.degrees(HCA)
     
     def R_find(self,state):
         
@@ -341,27 +333,27 @@ class AirCombatEnv:
         xB, yB, hB, bB, xR, yR, hR, bR = state
 
         
-        LOS_vec = np.array([xR - xB , yR - yB]) + 0.0000001
-        magnitude = np.linalg.norm(LOS_vec) 
+        LOS_vec = np.array([xR - xB , yR - yB]) 
+        magnitude = np.linalg.norm(LOS_vec) + 0.0000001
         LOS_vec = LOS_vec/magnitude    
         
         Vel_blue_vec = np.array([np.cos(hB), np.sin(hB)])
         Vel_red_vec  = np.array([np.cos(hR), np.sin(hR)])
         
-        Vel_rel_vec = Vel_blue_vec - Vel_red_vec
-        magnitude = np.linalg.norm(Vel_rel_vec)
+        Vel_rel_vec = Vel_blue_vec - Vel_red_vec 
+        magnitude = np.linalg.norm(Vel_rel_vec) + 0.0000001
         Vel_rel_vec = Vel_rel_vec/magnitude    
 
-        ClosureAngle = np.arccos(np.dot(LOS_vec,Vel_rel_vec))
+        ClosureAngle = np.arccos(min(max(np.dot(LOS_vec,Vel_rel_vec),-1),1))
         
-        return min(max(np.degrees(ClosureAngle),-180),180)
+        return np.degrees(ClosureAngle)
     
     def SA_find(self,state):
         
         AA = self.AA_find(state,0)
         ATA = self.ATA_find(state,0)
         
-        SA = 1 - ( (1- AA/180) + (1-ATA/180) )
+        SA = 1 - ( (1- AA/180) + (1 - ATA/180) )
         
         return SA
     
@@ -370,7 +362,7 @@ class AirCombatEnv:
         Rd = 2
         
         R = self.R_find(state)
-        SR = np.exp(-(abs(R-Rd)/180*k))
+        SR = np.exp(-(abs(R-Rd)/(180*k)))
         
         return SR
 
@@ -388,7 +380,7 @@ class AirCombatEnv:
             AA  = self.AA_find(state,1)
             ATA = self.ATA_find(state,1) 
             
-        S = ( ( (1- AA/180) + (1-ATA/180) ) / 2  ) * (np.exp(-(abs(R-Rd)/180*k)))
+        S = ( ( (1- AA/180) + (1-ATA/180) ) / 2  ) * (np.exp(-(abs(R-Rd)/(180*k))))
         
         return S
         
@@ -403,13 +395,15 @@ class AirCombatEnv:
         2) Distance
         3) max(0, AA)
         4) min(0, ATA)
-        5) |HCA|
-        6) (10 - |AA Rate|)
-        7) ATA Rate
-        8) (10 - |ATA Rate|)
-        9) Closure Angle
-        10) Red Bank angle
-        11) Blue Bank angle
+        5) SA
+        6) SR
+        7) |HCA|
+        8) (10 - |AA Rate|)
+        9) ATA Rate
+        10) (10 - |ATA Rate|)
+        11) Closure Angle
+        12) Red Bank angle
+        13) Blue Bank angle
         """
         xB, yB, hB, bB, xR, yR, hR, bR = state
 
