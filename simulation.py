@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple
+import time
+import matplotlib.pyplot as plt
+
 
 from env import AirCombatEnv
 
@@ -48,9 +51,12 @@ def approximate_value_iteration(env,
             best_val = -1e9
             for blue_action in env.blue_actions:
                 # simulate one step from s
+                
                 state_next, reward, done = simulate_step(env, state, blue_action)
+
                 if i != 0: 
                     val_next = 0.0 if done else np.dot(w, env.feature_func(state_next,state))
+
                 else:
                     val_next = 0.0 if done else env.S_function(state_next)
                     
@@ -89,8 +95,6 @@ def simulate_step(env, state, blue_action):
     """
     A helper function that simulates one step from state s 
     if Blue picks 'blue_action' and Red picks the best 3-step lookahead (approx).
-    We'll replicate a bit of env logic, ignoring environment done/boundary resets 
-    except for the immediate step.
     Return: next_state, immediate_reward, done_flag
     """
     red_best_action = env._red_3step_lookahead(state, blue_action)
@@ -118,25 +122,33 @@ env = AirCombatEnv(boundary=60.0, velocity=2.5,
                     max_bank_blue=np.radians(23),
                     max_bank_red=np.radians(18))
 
-# Train Agent
-w_final = train(env)
-np.save('wfinal.npy', w_final)
-
+# Train Agent or Load Weights
+#w_final = train(env)
+#np.save('wfinal.npy', w_final)
+w_final = np.load('weights/w39.npy')
 
 # Game Loop
-state = env.reset()
+_ = env.reset()
+state = np.array([0 , 0 , 0, 0,
+                  3.5, 0, 0, 0])
+env.state = state
+States = []
+States.append(state)
 done = False
 cum_reward = 0.0
 step_count = 0
 gamma = 0.95
 
-while not done and step_count < 200:
+while not done and step_count < 30:
     # choose blue_action = argmax_{a} [ r + gamma * w^T phi(s_next) ]
     best_blue_action = None
     best_val = -1e9
     for action in env.blue_actions:
+
         state_next, reward, done = simulate_step(env, state, action)
+
         val_next = 0.0 if done else np.dot(w_final, env.feature_func(state_next))
+
         q_val = reward + gamma * val_next
         if q_val > best_val:
             best_val = q_val
@@ -145,7 +157,45 @@ while not done and step_count < 200:
     # now actually step in the real environment
     best_red_action = env._red_3step_lookahead(state, best_blue_action)
     state, reward, done = env.step(best_blue_action,best_red_action)
+    States.append(state)
+
     cum_reward += reward
     step_count += 1
 
+def plot_trajectories(states):
+    """
+    Given a list of states, each of length >= 6:
+      states[t] = [xB, yB, headingB, bankB, xR, yR, headingR, bankR]
+    plots the Blue and Red positions over time.
+    """
+    # Extract x,y for Blue and Red across all time steps
+    blue_x = [s[0] for s in states]  # xB
+    blue_y = [s[1] for s in states]  # yB
+    red_x  = [s[4] for s in states]  # xR
+    red_y  = [s[5] for s in states]  # yR
+
+    # Create the figure
+    plt.figure(figsize=(6, 6))
+    
+    # Plot Blue trajectory
+    plt.plot(blue_x, blue_y, '-o', color='blue', label='Blue Trajectory')
+    # Mark the first point with a star
+    plt.plot(blue_x[0], blue_y[0], 'b*', markersize=10, label='Blue Start')
+    
+    # Plot Red trajectory
+    plt.plot(red_x, red_y, '-o', color='red', label='Red Trajectory')
+    # Mark the first point with a star
+    plt.plot(red_x[0], red_y[0], 'r*', markersize=10, label='Red Start')
+    
+    # Labeling and grid
+    plt.xlabel("X Position (m)")
+    plt.ylabel("Y Position (m)")
+    plt.title("Blue vs. Red Position History")
+    plt.grid(True)
+    plt.legend()
+    plt.axis('equal')  # So that circles, angles, etc. look correct.
+    plt.show()
+
+
+plot_trajectories(States)
 print(f"Test episode finished in {step_count} steps, total reward {cum_reward:.2f}")

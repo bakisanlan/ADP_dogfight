@@ -26,7 +26,7 @@ class AirCombatEnv:
         self.max_bank_red = max_bank_red
         self.g            = 9.81
         self.roll_rate    = np.radians(40)
-        self.dt           = 0.05
+        self.dt           = 0.15
         
         #self.gamma = gamma
         
@@ -56,7 +56,6 @@ class AirCombatEnv:
         """
         Resets the environment. 
         If None, randomly sample from distribution 
-        specified in your instructions.
         """
         def sample_with_defaults(value, dist_type, *dist_args):
             if value is not None:
@@ -82,7 +81,7 @@ class AirCombatEnv:
         headingR = sample_with_defaults(headingR, 'uniform', -np.pi             , np.pi)
         bankR    = sample_with_defaults(bankR,    'uniform', -self.max_bank_red , self.max_bank_red)
         
-        # # Clip positions to stay within boundaries (or re-sample if you prefer)
+        # # Clip positions to stay within boundaries
         # xB = np.clip(xB, -self.boundary, self.boundary)
         # yB = np.clip(yB, -self.boundary, self.boundary)
         # xR = np.clip(xR, -self.boundary, self.boundary)
@@ -105,7 +104,7 @@ class AirCombatEnv:
         
         xB, yB, hB, bB, xR, yR, hR, bR = self.state
 
-        for i in range(5):
+        for i in range(1):
             
             bB = np.max([np.min([bB + u_B*self.roll_rate*self.dt ,self.max_bank_blue]), -self.max_bank_blue])
             bR = np.max([np.min([bR + u_R*self.roll_rate*self.dt ,self.max_bank_red ]), -self.max_bank_red ])
@@ -123,8 +122,6 @@ class AirCombatEnv:
             yR = yR + self.velocity*np.sin(hR)*self.dt           
 
         # 5) Check boundaries
-        #    If out of boundary, we treat it as "done" and reset or 
-        #    forcibly keep them in?
         # if not (-self.boundary <= xB <= self.boundary and 
         #         -self.boundary <= yB <= self.boundary and
         #         -self.boundary <= xR <= self.boundary and
@@ -146,7 +143,7 @@ class AirCombatEnv:
         
         return next_state.copy(), reward, self.done
     
-    def step_outer(self,state,blue_action_index,red_action_index):
+    def step_outer(self,state,blue_action_index,red_action_index,dxFlag = 0):
         
         # if self.done:
         #     return self.state.copy(), 0.0, True
@@ -158,7 +155,7 @@ class AirCombatEnv:
         
         xB, yB, hB, bB, xR, yR, hR, bR = state
 
-        for i in range(5):
+        for i in range(1):
             
             bB = np.max([np.min([bB + u_B*self.roll_rate*self.dt ,self.max_bank_blue]), -self.max_bank_blue])
             bR = np.max([np.min([bR + u_R*self.roll_rate*self.dt ,self.max_bank_red ]), -self.max_bank_red ])
@@ -176,8 +173,6 @@ class AirCombatEnv:
             yR = yR + self.velocity*np.sin(hR)*self.dt           
 
         # 5) Check boundaries
-        #    If out of boundary, we treat it as "done" and reset or 
-        #    forcibly keep them in?
         # if not (-self.boundary <= xB <= self.boundary and 
         #         -self.boundary <= yB <= self.boundary and
         #         -self.boundary <= xR <= self.boundary and
@@ -187,14 +182,17 @@ class AirCombatEnv:
         
         # 6) Construct next_state
         next_state = np.array([xB, yB, hB, bB,
-                               xR, yR, hR, bR], dtype=np.float32)
-        
-        # 7) Compute reward
-        reward = self._reward(next_state)
-        
-        # 8) Possibly check if Blue is in the goal zone => done
-        if self._in_goal_zone(next_state):
-            done = True
+                    xR, yR, hR, bR], dtype=np.float32)
+        if dxFlag != 0:
+            reward = None
+            done   = None
+        else:
+            # 7) Compute reward
+            reward = self._reward(next_state)
+            
+            # 8) Possibly check if Blue is in the goal zone => done
+            if self._in_goal_zone(next_state):
+                done = True
         
         return next_state.copy(), reward, done
             
@@ -216,11 +214,8 @@ class AirCombatEnv:
         """
         Check if Blue is behind Red with certain geometry constraints 
         (AA, ATA in certain ranges, distance in certain range, etc.).
-        For demonstration, let's do a naive check—replace with real geometry if needed.
         """
-        # Just pretend "goal zone" means distance < some threshold & some angle constraints
-        #xB, yB, hB, bB, xR, yR, hR, bR = state
- 
+
         R   = self.R_find(state)
         AA  = self.AA_find(state,0)
         ATA = self.ATA_find(state,0)
@@ -235,22 +230,20 @@ class AirCombatEnv:
         we approximate that Blue picks actions that minimize S. 
         We'll pick the Red action that yields the highest final S 
         after 3 steps, ignoring discount for that short horizon.  
-        
-        But we only need the *first* Red action from the best sequence.
         """
         
         state_org = state
         red_best_action = 0
         best_S = -999999.0
-        n_lookahead = 1
+        n_lookahead = 3
         for red_action_index in self.red_actions:
             
             state = state_org
             S = 0
             
             for i in range(n_lookahead):
-                # simulate 1 step with this red action
-                state, _, _ = self.step_outer(state, blue_action_index, red_action_index)
+                # simulate n step with this red action
+                state, _, _ = self.step_outer(state, blue_action_index, red_action_index,1)
                 S += self.S_function(state,1)
             if S > best_S:
                 best_S = S
@@ -420,8 +413,8 @@ class AirCombatEnv:
         SA           = self.SA_find(state)
         SR           = self.SR_find(state)
         
-        AA_rate =  (AA  - AA_prev)  / ((self.dt)*5)
-        ATA_rate = (ATA - ATA_prev) / ((self.dt)*5)
+        AA_rate =  (AA  - AA_prev)  / ((self.dt)*1)
+        ATA_rate = (ATA - ATA_prev) / ((self.dt)*1)
         
         feat1  = abs(AA)
         feat2  = R
@@ -447,15 +440,15 @@ class AirCombatEnv:
 
     def second_order_no_bias(self,base_feat):
         """
-        Expand an 11-dim base feature vector 
+        Expand an 13-dim base feature vector 
         to second-order polynomial terms with NO constant term.
         That is:
         [ x1, x2, ..., x11, 
             x1^2, x2^2, ..., x11^2,
             x1*x2, x1*x3, ..., x10*x11 ]
-        Total = 11 + 11 + 55 = 77.
+        Total = 13 + 13 + 78 = 104.
         """
-        n = len(base_feat)  # 11
+        n = len(base_feat)  # 13
         # linear
         phi_lin = base_feat
         # squares
@@ -469,7 +462,7 @@ class AirCombatEnv:
         
         return np.concatenate([phi_lin, phi_sq, phi_cross], axis=0)
 
-    # Wrapper to get the final 77-dim feature
+    # Wrapper to get the final 104-dim feature
     def feature_func(self,state, prev_state = np.array([None,None])):
         base = self.extract_features_13(state, prev_state=prev_state)
         return self.second_order_no_bias(base)
