@@ -74,6 +74,8 @@ def approximate_value_iteration(env,
         # w = (X^T X)^{-1} X^T y, or using np.linalg.lstsq
         w_new, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
         w = w_new
+        np.save('weights/'+ 'w'+ str(i) + 'npy', w_new)
+
         
         # Track error
         pred = X.dot(w)
@@ -118,6 +120,8 @@ env = AirCombatEnv(boundary=60.0, velocity=2.5,
 
 # Train Agent
 w_final = train(env)
+np.save('wfinal.npy', w_final)
+
 
 # Game Loop
 state = env.reset()

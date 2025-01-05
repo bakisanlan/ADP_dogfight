@@ -31,3 +31,15 @@ StatesPrev[0] = np.array([1,2,3,4,5,6,7,8])
 
 print(StatesPrev[0])
 print(StatesNext[0])
+
+import numpy as np
+
+# Example array
+array = np.array([1, 2, 3, 4, 5])
+
+# Save array
+np.save('weights/' + str(3) + '1', array)
+
+# # Load array
+# loaded_array = np.load('array.npy')
+# print(loaded_array)
