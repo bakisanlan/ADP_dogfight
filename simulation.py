@@ -35,8 +35,8 @@ def approximate_value_iteration(env,
         state = env.reset()  # random
         States.append(state)
     States = np.array(States, dtype=np.float32)
-    StatesNext = States
-    StatesPrev = States
+    StatesNext = States.copy()
+    StatesPrev = States.copy()
     
 
     for i in range(num_iterations):
@@ -59,12 +59,13 @@ def approximate_value_iteration(env,
                     best_val = q_val
                     
                     StatesNext[j] = state_next
+                    a = 3
                     
             X.append(env.feature_func(state,StatesPrev[j]))
             y.append(best_val)
             
-        StatesPrev = States        # t                   
-        States     = StatesNext    # t+1
+        StatesPrev = States.copy()        # t                   
+        States     = StatesNext.copy()    # t+1
 
         X = np.array(X)
         y = np.array(y)
@@ -99,7 +100,7 @@ def simulate_step(env, state, blue_action):
 # -----------------------------
 # 4. Main / Example Usage
 # -----------------------------
-def train(env, gamma=0.95,num_samples=100000,num_iterations=40,seed=42):
+def train(env, gamma=0.95,num_samples=10000,num_iterations=40,seed=42):
         
     # Run approximate dynamic programming
     w_final = approximate_value_iteration(env,gamma,num_samples,num_iterations,seed)

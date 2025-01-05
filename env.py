@@ -125,12 +125,12 @@ class AirCombatEnv:
         # 5) Check boundaries
         #    If out of boundary, we treat it as "done" and reset or 
         #    forcibly keep them in?
-        if not (-self.boundary <= xB <= self.boundary and 
-                -self.boundary <= yB <= self.boundary and
-                -self.boundary <= xR <= self.boundary and
-                -self.boundary <= yR <= self.boundary):
-            # Out of boundary => done
-            self.done = True
+        # if not (-self.boundary <= xB <= self.boundary and 
+        #         -self.boundary <= yB <= self.boundary and
+        #         -self.boundary <= xR <= self.boundary and
+        #         -self.boundary <= yR <= self.boundary):
+        #     # Out of boundary => done
+        #     self.done = True
         
         # 6) Construct next_state
         next_state = np.array([xB, yB, hB, bB,
@@ -178,12 +178,12 @@ class AirCombatEnv:
         # 5) Check boundaries
         #    If out of boundary, we treat it as "done" and reset or 
         #    forcibly keep them in?
-        if not (-self.boundary <= xB <= self.boundary and 
-                -self.boundary <= yB <= self.boundary and
-                -self.boundary <= xR <= self.boundary and
-                -self.boundary <= yR <= self.boundary):
-            # Out of boundary => done
-            done = True
+        # if not (-self.boundary <= xB <= self.boundary and 
+        #         -self.boundary <= yB <= self.boundary and
+        #         -self.boundary <= xR <= self.boundary and
+        #         -self.boundary <= yR <= self.boundary):
+        #     # Out of boundary => done
+        #     done = True
         
         # 6) Construct next_state
         next_state = np.array([xB, yB, hB, bB,
@@ -242,7 +242,7 @@ class AirCombatEnv:
         state_org = state
         red_best_action = 0
         best_S = -999999.0
-        n_lookahead = 3
+        n_lookahead = 1
         for red_action_index in self.red_actions:
             
             state = state_org
