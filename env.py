@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple
+from Timer import Timer
 
 # -----------------------------
 # 1. Environment Definition
@@ -27,8 +28,9 @@ class AirCombatEnv:
         self.g            = 9.81
         self.roll_rate    = np.radians(40)
         self.dt           = 0.15
+        self.w            = None
+        self.gamma        = None
         
-        #self.gamma = gamma
         
         # For convenience: discrete actions for Blue
         # (negative bank change, zero, positive)
@@ -103,44 +105,33 @@ class AirCombatEnv:
         u_R = red_action_index  - 1
         
         xB, yB, hB, bB, xR, yR, hR, bR = self.state
-
+        
+        
         for i in range(1):
-            
-            bB = np.max([np.min([bB + u_B*self.roll_rate*self.dt ,self.max_bank_blue]), -self.max_bank_blue])
-            bR = np.max([np.min([bR + u_R*self.roll_rate*self.dt ,self.max_bank_red ]), -self.max_bank_red ])
-
-            yaw_rate_B = (self.g/self.velocity)*np.tan(bB)
-            yaw_rate_R = (self.g/self.velocity)*np.tan(bR)
-            
-            hB = hB + yaw_rate_B*self.dt
-            hR = hR + yaw_rate_R*self.dt
-            
-            xB = xB + self.velocity*np.cos(hB)*self.dt
-            xR = xR + self.velocity*np.cos(hR)*self.dt
-            
-            yB = yB + self.velocity*np.sin(hB)*self.dt
-            yR = yR + self.velocity*np.sin(hR)*self.dt           
-
-        # 5) Check boundaries
-        # if not (-self.boundary <= xB <= self.boundary and 
-        #         -self.boundary <= yB <= self.boundary and
-        #         -self.boundary <= xR <= self.boundary and
-        #         -self.boundary <= yR <= self.boundary):
-        #     # Out of boundary => done
-        #     self.done = True
+            x_dot = np.array([self.velocity*np.cos(hB), self.velocity*np.sin(hB), (self.g/self.velocity)*np.tan(bB), u_B*self.roll_rate,
+                              self.velocity*np.cos(hR), self.velocity*np.sin(hR), (self.g/self.velocity)*np.tan(bR), u_R*self.roll_rate]) 
+            next_state = self.state.copy() + x_dot * self.dt
+            next_state[3] = np.max([np.min([next_state[3],self.max_bank_blue]),-self.max_bank_blue])
+            next_state[7] = np.max([np.min([next_state[7],self.max_bank_red]), -self.max_bank_red])
         
         # 6) Construct next_state
-        next_state = np.array([xB, yB, hB, bB,
-                               xR, yR, hR, bR], dtype=np.float32)
+        # next_state = np.array([xB, yB, hB, bB,
+        #                        xR, yR, hR, bR], dtype=np.float32)
         
         self.state = next_state
         # 7) Compute reward
         reward = self._reward(next_state)
         
+        goal_zone = self._in_goal_zone(next_state,1)
         # 8) Possibly check if Blue is in the goal zone => done
-        if self._in_goal_zone(next_state):
+        if goal_zone == 1:
             self.done = True
-        
+            print("Blue won")
+            
+        elif goal_zone == 2:
+            self.done = True
+            print("Red won") 
+            
         return next_state.copy(), reward, self.done
     
     def step_outer(self,state,blue_action_index,red_action_index,dxFlag = 0):
@@ -156,21 +147,11 @@ class AirCombatEnv:
         xB, yB, hB, bB, xR, yR, hR, bR = state
 
         for i in range(1):
-            
-            bB = np.max([np.min([bB + u_B*self.roll_rate*self.dt ,self.max_bank_blue]), -self.max_bank_blue])
-            bR = np.max([np.min([bR + u_R*self.roll_rate*self.dt ,self.max_bank_red ]), -self.max_bank_red ])
-
-            yaw_rate_B = (self.g/self.velocity)*np.tan(bB)
-            yaw_rate_R = (self.g/self.velocity)*np.tan(bR)
-            
-            hB = hB + yaw_rate_B*self.dt
-            hR = hR + yaw_rate_R*self.dt
-            
-            xB = xB + self.velocity*np.cos(hB)*self.dt
-            xR = xR + self.velocity*np.cos(hR)*self.dt
-            
-            yB = yB + self.velocity*np.sin(hB)*self.dt
-            yR = yR + self.velocity*np.sin(hR)*self.dt           
+            x_dot = np.array([self.velocity*np.cos(hB), self.velocity*np.sin(hB), (self.g/self.velocity)*np.tan(bB), u_B*self.roll_rate,
+                              self.velocity*np.cos(hR), self.velocity*np.sin(hR), (self.g/self.velocity)*np.tan(bR), u_R*self.roll_rate]) 
+            next_state = self.state.copy() + x_dot * self.dt
+            next_state[3] = np.max([np.min([next_state[3],self.max_bank_blue]),-self.max_bank_blue])
+            next_state[7] = np.max([np.min([next_state[7],self.max_bank_red]), -self.max_bank_red])      
 
         # 5) Check boundaries
         # if not (-self.boundary <= xB <= self.boundary and 
@@ -181,8 +162,9 @@ class AirCombatEnv:
         #     done = True
         
         # 6) Construct next_state
-        next_state = np.array([xB, yB, hB, bB,
-                    xR, yR, hR, bR], dtype=np.float32)
+        # next_state = np.array([xB, yB, hB, bB,
+        #             xR, yR, hR, bR], dtype=np.float32)
+        
         if dxFlag != 0:
             reward = None
             done   = None
@@ -210,19 +192,26 @@ class AirCombatEnv:
         s_val = self.S_function(state)
         return 0.8*g_pa_val + 0.2*s_val
 
-    def _in_goal_zone(self, state):
+    def _in_goal_zone(self, state, flag = 0):
         """
         Check if Blue is behind Red with certain geometry constraints 
         (AA, ATA in certain ranges, distance in certain range, etc.).
         """
 
         R   = self.R_find(state)
-        AA  = self.AA_find(state,0)
-        ATA = self.ATA_find(state,0)
+        AA_b  = self.AA_find(state,0)
+        ATA_b = self.ATA_find(state,0)
         
-        if (R <= 3) and (R >= 0.1) and (abs(AA) < 60) and (abs(ATA) < 30):
-            return True
-        return False
+        AA_r  = self.AA_find(state,1)
+        ATA_r = self.ATA_find(state,1)
+        
+        if (R <= 2) and (R >= 0.1) and (abs(AA_b) < 60) and (abs(ATA_b) < 30):
+            return 1
+        
+        elif (R <= 2) and (R >= 0.1) and (abs(AA_r) < 60) and (abs(ATA_r) < 30) and (flag):
+            return 2
+        
+        return 0
 
     def _red_3step_lookahead(self, state, blue_action_index):
         """
@@ -235,7 +224,7 @@ class AirCombatEnv:
         state_org = state
         red_best_action = 0
         best_S = -999999.0
-        n_lookahead = 3
+        n_lookahead = 1
         for red_action_index in self.red_actions:
             
             state = state_org
@@ -251,6 +240,35 @@ class AirCombatEnv:
                 
         return red_best_action
     
+    def _blue_nom_action(self,state):
+        
+        best_blue_action = None
+        best_val = -1e9
+        for action in self.blue_actions:
+
+            state_next, reward, done = self.simulate_step(state, action)
+
+            val_next = 0.0 if done else np.dot(self.w, self.feature_func(state_next))
+
+            q_val = reward + self.gamma * val_next
+            if q_val > best_val:
+                best_val = q_val
+                best_blue_action = action
+                
+        return best_blue_action
+                
+    def simulate_step(self, state, blue_action):
+        """
+        A helper function that simulates one step from state s 
+        if Blue picks 'blue_action' and Red picks the best 3-step lookahead (approx).
+        Return: next_state, immediate_reward, done_flag
+        """
+        red_best_action = self._red_3step_lookahead(state, blue_action)
+        
+        state_next, reward, done = self.step_outer(state,blue_action,red_best_action)
+            
+        return state_next, reward, done
+
         
     def ATA_find(self,state,relFlag = 0):
         
