@@ -33,12 +33,12 @@ def plot_trajectories(states, flag3D=False):
         # Plot Blue trajectory
         ax.plot(blue_x, blue_y, blue_z, 'o', color='blue', label='Blue Trajectory')
         # Mark the first point with a star
-        # ax.scatter(blue_x[0], blue_y[0], blue_z[0], color='blue', marker='*', s=100, label='Blue Start')
+        ax.scatter(blue_x[0], blue_y[0], blue_z[0], color='blue', marker='*', s=100, label='Blue Start')
         
         # Plot Red trajectory
         ax.plot(red_x, red_y, red_z, 'o', color='red', label='Red Trajectory')
         # # Mark the first point with a star
-        # ax.scatter(red_x[0], red_y[0], red_z[0], color='red', marker='*', s=100, label='Red Start')
+        ax.scatter(red_x[0], red_y[0], red_z[0], color='red', marker='*', s=100, label='Red Start')
         
         # Labeling
         ax.set_xlabel("X Position (m)")

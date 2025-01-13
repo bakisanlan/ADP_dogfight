@@ -31,22 +31,25 @@ def approximate_value_iteration(env,
     w = np.zeros(phi_dim, dtype=np.float32)
     
     # 3.2 Sample states
-    States = env.collectSample(num_samples)
+    States, StatesPrev, redActions = env.collectSample(num_samples)
     States = np.array(States, dtype=np.float32)
-    StatesNext = States.copy()
-    StatesPrev = States.copy()
+    StatesPrev = np.array(StatesPrev, dtype=np.float32)
+    redActions = np.array(redActions)
+
+    # StatesNext = States.copy()
+    # StatesPrev = States.copy()
     
     for i in range(num_iterations):
         X = []
         y = []
         
-        for j, state in enumerate(States):
+        for j, (state,prevstate,red_action) in enumerate(zip(States,StatesPrev,redActions)):
             
             best_val = -1e9
+            # red_action = env._red_minimax(state)
             for blue_action in env.blue_actions:
                 # simulate one step from s
                 
-                red_action = env._red_minimax(state)
                 state_next, reward, done = env.step_outer(state,blue_action,red_action)
 
                 if i != 0: 
@@ -58,13 +61,13 @@ def approximate_value_iteration(env,
                 q_val = reward + gamma * val_next
                 if q_val > best_val:
                     best_val = q_val
-                    StatesNext[j] = state_next
+                    # StatesNext[j] = state_next
                     
-            X.append(env.feature_func(state,StatesPrev[j]))
+            X.append(env.feature_func(state,prevstate))
             y.append(best_val)
             
-        StatesPrev = States.copy()        # t                   
-        States     = StatesNext.copy()    # t+1
+        # StatesPrev = States.copy()        # t                   
+        # States     = StatesNext.copy()    # t+1
 
         X = np.array(X)
         y = np.array(y)
@@ -86,7 +89,7 @@ def approximate_value_iteration(env,
 # -----------------------------
 # 4. Main / Example Usage
 # -----------------------------
-def train(env, gamma=0.95,num_samples=1000,num_iterations=50,seed=45):
+def train(env, gamma=0.95,num_samples=10000,num_iterations=50,seed=45):
         
     # Run approximate dynamic programming
     w_final = approximate_value_iteration(env,gamma,num_samples,num_iterations,seed)

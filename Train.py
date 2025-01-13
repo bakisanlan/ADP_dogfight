@@ -62,7 +62,6 @@ def approximate_value_iteration(env,
                     best_val = q_val
                     
                     StatesNext[j] = state_next
-                    a = 3
                     
             X.append(env.feature_func(state,StatesPrev[j]))
             y.append(best_val)

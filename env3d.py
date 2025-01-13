@@ -275,9 +275,12 @@ class AirCombatEnv:
         
         best_blue_action = None
         best_val = -1e9
+        
+        red_action = self._red_minimax(state)
+        
         for action in self.blue_actions:
 
-            state_next, reward, done = self.simulate_step(state, action)
+            state_next, reward, done = self.step_outer(state,action,red_action)
 
             val_next = 0.0 if done else np.dot(self.w, self.feature_func(state_next))
 
@@ -307,23 +310,26 @@ class AirCombatEnv:
         Return: next_state, immediate_reward, done_flag
         """
         sampleX = []
+        sampleXprev = []
+        redActions  = []
         n = nsample
         
         while len(sampleX) < n:
             
             state = self.reset()  # random
-            sampleX.append(state)
             done = False
             while not done:
                 
                 blue_minimax_action = self._blue_minimax(state)                
                 red_minimax_action  = self._red_minimax(state)
+                redActions.append(red_minimax_action)
             
+                sampleXprev.append(state)
                 state, _, done = self.step_outer(state,blue_minimax_action,red_minimax_action,2)
                 sampleX.append(state)
             
         print(str(nsample)+ 'samples collected.')
-        return sampleX
+        return sampleX,sampleXprev,redActions
         
     def ATA_find(self,state,relFlag = 0):
         
