@@ -17,7 +17,7 @@ class AirCombatEnv:
     """
     def __init__(self, 
                  boundary=60.0,
-                 velocity=10,
+                 velocity=2.5,
                  max_bank_blue =np.radians(23),
                  max_bank_red  =np.radians(18)
                  ):
@@ -35,7 +35,7 @@ class AirCombatEnv:
         self.dt            = 0.15
         self.w             = None
         self.gamma         = None
-        self.R             = 15
+        self.R             = 3
         # self.roll_rate    = np.radians(40)
 
         
@@ -85,7 +85,7 @@ class AirCombatEnv:
                 raise ValueError("Unknown dist type.")
         
         # Positions ~ Normal(0,7/3) but clipped to [-boundary,boundary]
-        std = 28
+        std = 7
         xB = sample_with_defaults(xB, 'normal', 0.0, std)
         yB = sample_with_defaults(yB, 'normal', 0.0, std)
         zB = sample_with_defaults(zB, 'normal', 0.0, std/3)
@@ -124,7 +124,7 @@ class AirCombatEnv:
             next_state = state + x_dot * self.dt
             # Bound flight path angle
             next_state[4] = np.max([np.min([next_state[4],self.max_flpath_blue]),-self.max_flpath_blue])
-            next_state[9] = np.max([np.min([next_state[4],self.max_flpath_red]), -self.max_flpath_red])
+            next_state[9] = np.max([np.min([next_state[9],self.max_flpath_red]), -self.max_flpath_red])
         
         self.state = next_state
         # 7) Compute reward
@@ -212,7 +212,7 @@ class AirCombatEnv:
         else:
             return 0
 
-    def _red_minimax(self, state):
+    def _red_minimax(self, state, n_lookahead = 3):
         """
         For each possible 3-step sequence of Red actions, 
         we approximate that Blue picks actions that minimize S. 
@@ -222,7 +222,6 @@ class AirCombatEnv:
         
         state_org = state
         S_max = -999999999
-        n_lookahead = 3
         for red_action_index in range(self.n_action):
             
             state = state_org
@@ -303,7 +302,7 @@ class AirCombatEnv:
             
         return state_next, reward, done
     
-    def collectSample(self,nsample):
+    def collectSample(self,nsample,max_step = 50):
         """
         A helper function that simulates one step from state s 
         if Blue picks 'blue_action' and Red picks the best 3-step lookahead (approx).
@@ -318,7 +317,8 @@ class AirCombatEnv:
             
             state = self.reset()  # random
             done = False
-            while not done:
+            step = 0
+            while (not done) and (step < max_step):
                 
                 blue_minimax_action = self._blue_minimax(state)                
                 red_minimax_action  = self._red_minimax(state)
@@ -327,6 +327,7 @@ class AirCombatEnv:
                 sampleXprev.append(state)
                 state, _, done = self.step_outer(state,blue_minimax_action,red_minimax_action,2)
                 sampleX.append(state)
+                step += 1
             
         print(str(nsample)+ 'samples collected.')
         return sampleX,sampleXprev,redActions
@@ -477,7 +478,7 @@ class AirCombatEnv:
         12) Red Bank angle
         13) Blue Bank angle
         """
-        # xB, yB, zB, headingB, flpathB, xR, yR, zR, headingR, flpathR = state
+        xB, yB, zB, headingB, flpathB, xR, yR, zR, headingR, flpathR = state
 
         if any(prev_state == None):
             prev_state = state
@@ -506,13 +507,15 @@ class AirCombatEnv:
         feat9  = ATA_rate
         feat10 = 10 - abs(ATA_rate)
         feat11 = ClosureAngle
-        # feat12 = np.degrees(bR)
-        # feat13 = np.degrees(bB)
+        feat12 = zB
+        feat13 = zR
+        feat14 = headingB
+        feat15 = headingR
         
         features = np.array([
             feat1,  feat2,  feat3, feat4, feat5,
             feat6,  feat7,  feat8, feat9, feat10,
-            feat11
+            feat11, feat12, feat13, feat14, feat15
                             ])
 
         return features
@@ -583,18 +586,19 @@ class AirCombatEnv:
         # Constant Velocity
         V = self.velocity
         g = self.g
+        k = 0.2
 
         # Compute derivatives
         Bdx_dt      = V * np.cos(headingB) * np.cos(flpathB)               # ẋ
         Bdy_dt      = V * np.sin(headingB) * np.cos(flpathB)               # ẏ
         Bdz_dt      = V * np.sin(flpathB)                                  # ḣ
-        Bdpsi_dt    = (g * nz_B * np.sin(bank_B)) / (V * np.cos(flpathB))  # ψ̇
-        Bdgamma_dt  = (g / V) * (nz_B * np.cos(bank_B) - np.cos(flpathB))  # γ̇
+        Bdpsi_dt    = ((g * nz_B * np.sin(bank_B)) / (V * np.cos(flpathB)))  # ψ̇
+        Bdgamma_dt  = k*((g / V) * (nz_B * np.cos(bank_B) - np.cos(flpathB)))  # γ̇
         Rdx_dt      = V * np.cos(headingR) * np.cos(flpathR)               # ẋ
         Rdy_dt      = V * np.sin(headingR) * np.cos(flpathR)               # ẏ
         Rdz_dt      = V * np.sin(flpathR)                                  # ḣ
-        Rdpsi_dt    = (g * nz_R * np.sin(bank_R)) / (V * np.cos(flpathR))  # ψ̇
-        Rdgamma_dt  = (g / V) * (nz_R * np.cos(bank_R) - np.cos(flpathR))  # γ̇
+        Rdpsi_dt    = ((g * nz_R * np.sin(bank_R)) / (V * np.cos(flpathR)))  # ψ̇
+        Rdgamma_dt  = k*((g / V) * (nz_R * np.cos(bank_R) - np.cos(flpathR)))  # γ̇
 
         # Pack into a single array for the ODE solver
         dx = np.array([Bdx_dt, Bdy_dt, Bdz_dt, Bdpsi_dt, Bdgamma_dt, 

@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from env import AirCombatEnv
+from Plotter import plot_trajectories
 
 def approximate_value_iteration(env, 
                                 gamma=0.95,
@@ -33,8 +34,9 @@ def approximate_value_iteration(env,
     # 3.2 Sample states
     States, StatesPrev, redActions = env.collectSample(num_samples)
     States = np.array(States, dtype=np.float32)
-    StatesPrev = np.array(StatesPrev, dtype=np.float32)
-    redActions = np.array(redActions)
+    plot_trajectories(States,1)
+    # StatesPrev = np.array(StatesPrev, dtype=np.float32)
+    # redActions = np.array(redActions)
 
     # StatesNext = States.copy()
     # StatesPrev = States.copy()
@@ -43,10 +45,10 @@ def approximate_value_iteration(env,
         X = []
         y = []
         
-        for j, (state,prevstate,red_action) in enumerate(zip(States,StatesPrev,redActions)):
+        for j, (state ,stateprev, red_action) in enumerate(zip(States, StatesPrev, redActions)):
             
             best_val = -1e9
-            # red_action = env._red_minimax(state)
+            # red_action = env._red_minimax(state,1)
             for blue_action in env.blue_actions:
                 # simulate one step from s
                 
@@ -63,7 +65,7 @@ def approximate_value_iteration(env,
                     best_val = q_val
                     # StatesNext[j] = state_next
                     
-            X.append(env.feature_func(state,prevstate))
+            X.append(env.feature_func(state,stateprev))
             y.append(best_val)
             
         # StatesPrev = States.copy()        # t                   
@@ -76,7 +78,8 @@ def approximate_value_iteration(env,
         # w = (X^T X)^{-1} X^T y, or using np.linalg.lstsq
         w_new, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
         w = w_new
-        np.save('weights_3d_v1/'+ 'w'+ str(i), w_new)
+        np.save('weights_3d_v3/'+ 'w'+ str(i), w_new)
+        print(w.shape)
 
         
         # Track error
@@ -89,7 +92,7 @@ def approximate_value_iteration(env,
 # -----------------------------
 # 4. Main / Example Usage
 # -----------------------------
-def train(env, gamma=0.95,num_samples=10000,num_iterations=50,seed=45):
+def train(env, gamma=0.95,num_samples=100000,num_iterations=40,seed=32):
         
     # Run approximate dynamic programming
     w_final = approximate_value_iteration(env,gamma,num_samples,num_iterations,seed)

@@ -1,5 +1,30 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # Needed for 3D plotting
+import numpy as np
+
+def set_axes_equal(ax):
+    """
+    Make the 3D axes of a 3D plot have equal scale so that spheres appear as spheres,
+    cubes as cubes, etc.  
+    This is one solution to Matplotlib's 'equal axis' problem for 3D.
+    """
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+    
+    x_range = x_limits[1] - x_limits[0]
+    y_range = y_limits[1] - y_limits[0]
+    z_range = z_limits[1] - z_limits[0]
+    
+    max_range = max(x_range, y_range, z_range)
+    
+    x_mid = 0.5 * (x_limits[0] + x_limits[1])
+    y_mid = 0.5 * (y_limits[0] + y_limits[1])
+    z_mid = 0.5 * (z_limits[0] + z_limits[1])
+    
+    ax.set_xlim3d([x_mid - 0.5 * max_range, x_mid + 0.5 * max_range])
+    ax.set_ylim3d([y_mid - 0.5 * max_range, y_mid + 0.5 * max_range])
+    ax.set_zlim3d([z_mid - 0.5 * max_range, z_mid + 0.5 * max_range])
 
 def plot_trajectories(states, flag3D=False):
     """
@@ -37,7 +62,6 @@ def plot_trajectories(states, flag3D=False):
         
         # Plot Red trajectory
         ax.plot(red_x, red_y, red_z, 'o', color='red', label='Red Trajectory')
-        # # Mark the first point with a star
         ax.scatter(red_x[0], red_y[0], red_z[0], color='red', marker='*', s=100, label='Red Start')
         
         # Labeling
@@ -46,27 +70,30 @@ def plot_trajectories(states, flag3D=False):
         ax.set_zlabel("Z Position (m)")
         ax.set_title("Blue vs. Red Position History (3D)")
         ax.legend()
+        
+        # *** IMPORTANT: Enforce equal aspect ratio ***
+        set_axes_equal(ax)
+        ax.invert_zaxis()
+        ax.invert_yaxis()
+
+
         plt.show()
     
     else:
-        # -- 2D plotting (original code) --
-        # Extract x, y for Blue (B) and Red (R)
+        # -- 2D plotting --
         blue_x = [s[0] for s in states]  # xB
         blue_y = [s[1] for s in states]  # yB
         red_x  = [s[4] for s in states]  # xR
         red_y  = [s[5] for s in states]  # yR
         
-        # Create the figure
         plt.figure(figsize=(6, 6))
         
         # Plot Blue trajectory
         plt.plot(blue_x, blue_y, '-o', color='blue', label='Blue Trajectory')
-        # Mark the first point with a star
         plt.plot(blue_x[0], blue_y[0], 'b*', markersize=10, label='Blue Start')
         
         # Plot Red trajectory
         plt.plot(red_x, red_y, '-o', color='red', label='Red Trajectory')
-        # Mark the first point with a star
         plt.plot(red_x[0], red_y[0], 'r*', markersize=10, label='Red Start')
         
         # Labeling and grid
@@ -75,5 +102,8 @@ def plot_trajectories(states, flag3D=False):
         plt.title("Blue vs. Red Position History")
         plt.grid(True)
         plt.legend()
+        
+        # Force equal scaling in 2D
         plt.axis('equal')
+        
         plt.show()
