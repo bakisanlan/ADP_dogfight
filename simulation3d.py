@@ -15,17 +15,43 @@ env = AirCombatEnv(velocity=2.5)
 
 # Train Agent or Load Weights
 gamma=0.95
-# w_final = train(env, gamma = gamma)
-#np.save('wfinal.npy', w_final)
+# w_final = train(env, gamma = gamma)  #For training uncomment it
+
 w_final = np.load('weights_3d_v3/w19.npy')
 env.w = w_final
 env.gamma = gamma
 
 
+
 # Game Loop
+# For initial position of two aircraft, below different initial states should be selected with uncommenting one of them
+
+##Random initial state
 # state = env.reset()
-state = np.array([3.2 , 2 ,0,np.pi/6 ,-np.radians(15),
-                  0 ,-2, 0,np.radians(45),np.radians(15)])
+
+#Flight 1
+state = np.array([0 ,  0 ,0, 0 ,0,
+                  3.5 ,0, 0,0,0] )
+
+##Flight 2
+# state = np.array([0 , 3 ,0,-np.radians(23) ,0,
+#                   0 ,0, 0,np.radians(-18),0] )
+##Flight 3
+# state = np.array([3.5, 0 ,0,0 ,0,
+#                   0 ,0, 0,0,0] )
+
+##Flight 4
+# state = np.array([4, 0 ,0,0 ,0,
+#                   0 ,0, 0,-np.pi,0] )
+
+##Flight 5
+# state = np.array([0, 0 ,3,np.pi/4 ,0,
+#                   -0.25 ,0.25, 0,-np.pi/4,0] )
+
+##Flight 6
+# state = np.array([-0.1, 0 ,0,np.pi*1.5 ,0,
+#                   0.1 ,0, 0, np.pi/2,0] )
+
 env.state = state
 States = []
 States.append(state)
@@ -66,7 +92,7 @@ while (not done) and (step_count < 30):
     best_red_action = env._red_minimax(state)
     # with Timer('step'):
     
-    # # # ##minimax_search
+    # # # ##minimax_search, for seeing what would happen if both of them use same policy minimax search without learning uncomment below to line
     # best_blue_action = env._blue_minimax(state)
     # best_red_action = env._red_minimax(state)
     
@@ -77,11 +103,5 @@ while (not done) and (step_count < 30):
     cum_reward += reward
     step_count += 1
 
-print(f"Test episode finished in {step_count} steps, total reward {cum_reward:.2f}")
-plot_trajectories(States,1)
 
-# with Timer('ded'):
-#     for i in range(100000):
-#         state, reward, done = env.step(1,1)
-    
-# print(i)
+plot_trajectories(States,1)
