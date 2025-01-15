@@ -17,7 +17,7 @@ env = AirCombatEnv(velocity=2.5)
 gamma=0.95
 # w_final = train(env, gamma = gamma)  #For training uncomment it
 
-w_final = np.load('weights_3d_v3/w19.npy')
+w_final = np.load('weights/weights_3d_v3/w19.npy')
 env.w = w_final
 env.gamma = gamma
 
