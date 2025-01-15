@@ -9,3 +9,5 @@ After gathering structures of 2D for ADP, I skip implementing 2D and go on 3D.
 There are many weights learned from ADP are saved to weights folder.
 
 For training or testing the learned weights 'simulation3d.py' can run.
+
+Note: @atalhacetin is not a Contributor. I(@bakisanlan) just use his computer to train agent faster.
